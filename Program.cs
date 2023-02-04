@@ -1,7 +1,5 @@
-using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Azure.Functions.Worker.Configuration;
 
 namespace AzFuncIsoDocker
 {
@@ -9,11 +7,15 @@ namespace AzFuncIsoDocker
     {
         public static void Main()
         {
-            var host = new HostBuilder()
+            IHostBuilder host = new HostBuilder()
                 .ConfigureFunctionsWorkerDefaults()
-                .Build();
-
-            host.Run();
+                .ConfigureServices(services =>
+                {
+                    services.AddApplicationInsightsTelemetryWorkerService();    // Enable Application Insights for workers.
+                    services.AddApplicationInsightsKubernetesEnricher(null, Microsoft.Extensions.Logging.LogLevel.Trace);        // Enable Application Insights Kubernetes to enhance telemetries.
+                });
+            IHost app = host.Build();
+            app.Run();
         }
     }
 }
