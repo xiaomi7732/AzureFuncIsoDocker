@@ -1,3 +1,5 @@
+using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.ApplicationInsights.Kubernetes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -8,11 +10,13 @@ namespace AzFuncIsoDocker
         public static void Main()
         {
             IHostBuilder host = new HostBuilder()
-                .ConfigureFunctionsWorkerDefaults()
-                .ConfigureServices(services =>
+                .ConfigureFunctionsWorkerDefaults(builder =>
                 {
-                    services.AddApplicationInsightsTelemetryWorkerService();    // Enable Application Insights for workers.
-                    services.AddApplicationInsightsKubernetesEnricher(null, Microsoft.Extensions.Logging.LogLevel.Trace);        // Enable Application Insights Kubernetes to enhance telemetries.
+                    builder.Services.AddSingleton<ITelemetryInitializer, MyInit>();
+                    builder.Services.AddApplicationInsightsKubernetesEnricher(null, Microsoft.Extensions.Logging.LogLevel.Trace);
+                })
+                .ConfigureServices(services =>{
+                    services.AddSingleton<ITelemetryInitializer, MyInit>();
                 });
             IHost app = host.Build();
             app.Run();
