@@ -32,7 +32,7 @@ namespace AzFuncIsoDocker
             {
                 try
                 {
-                    // Warning will be send to application insights.
+                    // Warning will be sent to application insights.
                     _logger.LogWarning("This is a warning!");
 
                     _logger.LogInformation("C# HTTP trigger function processed a request.");    // By default, this won't be sent to AI.
