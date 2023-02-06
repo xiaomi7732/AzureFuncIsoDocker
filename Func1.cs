@@ -1,10 +1,11 @@
 using System.Collections.Generic;
 using System.Net;
+using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace AzFuncIsoDocker
 {
@@ -12,43 +13,43 @@ namespace AzFuncIsoDocker
     {
         private readonly ILogger _logger;
 
-        private readonly TelemetryConfiguration _telemetryConfigurations;
         private readonly IEnumerable<ITelemetryInitializer> _telemetryInitializers;
+        private readonly TelemetryClient _telemetryClient;
 
         public Func1(
             ILoggerFactory loggerFactory,
-            IEnumerable<ITelemetryInitializer> telemetryInitializers,
-            IOptions<TelemetryConfiguration> telemetryConfigurations)
+            TelemetryClient telemetryClient)
         {
             _logger = loggerFactory.CreateLogger<Func1>();
-            _telemetryConfigurations = telemetryConfigurations?.Value ?? throw new System.ArgumentNullException(nameof(telemetryConfigurations));
-            _telemetryInitializers = telemetryInitializers ?? throw new System.ArgumentNullException(nameof(telemetryInitializers));
+            _telemetryClient = telemetryClient ?? throw new System.ArgumentNullException(nameof(telemetryClient));
         }
 
         [Function("Func1")]
         public HttpResponseData Run(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequestData req)
         {
-            _logger.LogInformation("Here here: {confignull} - iKey: {ikey} - count: {count}", _telemetryConfigurations, _telemetryConfigurations?.InstrumentationKey, _telemetryConfigurations.TelemetryInitializers.Count);
-            foreach (ITelemetryInitializer initializer in _telemetryConfigurations.TelemetryInitializers)
+            using (IOperationHolder<RequestTelemetry> operation = _telemetryClient.StartOperation<RequestTelemetry>("Func1Request"))
             {
-                _logger.LogInformation("Telemetry initializer: {initializer}", initializer.GetType());
+                try
+                {
+                    // Warning will be send to application insights.
+                    _logger.LogWarning("This is a warning!");
+
+                    _logger.LogInformation("C# HTTP trigger function processed a request.");    // By default, this won't be sent to AI.
+
+                    var response = req.CreateResponse(HttpStatusCode.OK);
+                    response.Headers.Add("Content-Type", "text/plain; charset=utf-8");
+
+                    response.WriteString("Welcome to Azure Functions!");
+
+                    return response;
+                }
+                catch
+                {
+                    operation.Telemetry.Success = false;
+                    throw;
+                }
             }
-
-            _logger.LogInformation("All telemetry initializers in the container");
-            foreach(ITelemetryInitializer initializer1 in _telemetryInitializers)
-            {
-                _logger.LogInformation("Telemetry initializer: {initializer}", initializer1.GetType());
-            }
-
-            _logger.LogInformation("C# HTTP trigger function processed a request.");
-
-            var response = req.CreateResponse(HttpStatusCode.OK);
-            response.Headers.Add("Content-Type", "text/plain; charset=utf-8");
-
-            response.WriteString("Welcome to Azure Functions!");
-
-            return response;
         }
     }
 }
